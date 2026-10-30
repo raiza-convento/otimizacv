@@ -4,20 +4,30 @@ const TEMPO_TOTAL_MS = 55_000;
 const TEMPO_GEMINI_MS = 32_000;
 const TEMPO_POR_MODELO_MS = 9_000;
 const TEMPO_ANTHROPIC_MS = 21_000;
+const TEMPO_ETAPA_TOTAL_MS = 90_000;
+const TEMPO_ETAPA_GEMINI_MS = 48_000;
+const TEMPO_ETAPA_POR_MODELO_MS = 16_000;
+const TEMPO_ETAPA_ANTHROPIC_MS = 34_000;
+const MODELO_ANTHROPIC_PADRAO = 'claude-haiku-4-5-20251001';
 
 // Ordem herdada do fallback do Apps Script. O modelo definido no .env sempre vem primeiro.
 const MODELOS_GEMINI_PADRAO = [
   'gemini-3.8-flash',
-  'gemini-3-flash-preview',
   'gemini-3.6-flash',
-  'gemini-2.5-flash',
+  'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
-  'gemini-2.5-flash-lite',
-  'gemini-flash-lite-latest'
+  'gemini-3-flash-preview'
 ];
 
 const cooldowns = new Map<string, number>();
 type Falha = Error & { trocarModelo?: boolean; cooldownSegundos?: number };
+
+
+function modeloAnthropic(): string {
+  const configurado = process.env.AI_MODEL_ANTHROPIC?.trim();
+  if (!configurado || configurado === 'claude-haiku-5-5') return MODELO_ANTHROPIC_PADRAO;
+  return configurado;
+}
 
 function prompts() {
   const hoje = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo' }).format(new Date());
@@ -114,7 +124,7 @@ async function chamarGemini(modelo: string, pdfBase64: string, apiKey: string, d
 }
 
 async function chamarAnthropic(pdfBase64: string, apiKey: string, deadline: number) {
-  const modelo = process.env.AI_MODEL_ANTHROPIC?.trim() || 'claude-haiku-5-5';
+  const modelo = modeloAnthropic();
   const timeout = Math.max(1000, Math.min(TEMPO_ANTHROPIC_MS, deadline - Date.now()));
   const { sistema, leitura } = prompts();
   let response: Response;
@@ -200,82 +210,198 @@ export async function extrairCurriculo(pdfBase64: string) {
 
 export async function consultarIA(prompt: string, etapa: string) {
   const inicio = Date.now();
+  const deadline = inicio + TEMPO_ETAPA_TOTAL_MS;
   const geminiKey = process.env.GEMINI_API_KEY;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  const modelos = listaGemini();
   const falhas: string[] = [];
-  for (const modelo of modelos) {
-    if (!geminiKey) break;
+  const limiteGemini = Math.min(
+    deadline - (anthropicKey ? TEMPO_ETAPA_ANTHROPIC_MS : 0),
+    inicio + TEMPO_ETAPA_GEMINI_MS
+  );
+
+  if (geminiKey) {
+    const modelos = listaGemini().filter((modelo) => restante(modelo) === 0);
+    if (!modelos.length) falhas.push('Todos os modelos Gemini estão em cooldown.');
+
+    for (const modelo of modelos) {
+      const tempoRestante = limiteGemini - Date.now();
+      if (tempoRestante < 1_000) break;
+      const timeout = Math.min(TEMPO_ETAPA_POR_MODELO_MS, tempoRestante);
+
+      try {
+        const response = await fetch(`${GEMINI_URL}${encodeURIComponent(modelo)}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 12000, responseMimeType: 'application/json' }
+          }),
+          cache: 'no-store',
+          signal: AbortSignal.timeout(timeout)
+        });
+
+        const raw = await response.text();
+        let payload: any = {};
+        try { payload = raw ? JSON.parse(raw) : {}; } catch { /* tratado como resposta inválida */ }
+
+        if (!response.ok) {
+          const detalhe = payload?.error?.message || `HTTP ${response.status}`;
+          falhas.push(`Gemini ${modelo}: ${detalhe}`);
+          if ([401, 403, 400].includes(response.status)) break;
+          const cooldown = response.status === 404 ? 21_600 : response.status === 429 ? 3_600 : 180;
+          marcarCooldown(modelo, cooldown);
+          continue;
+        }
+
+        const texto = payload?.candidates?.[0]?.content?.parts
+          ?.filter((item: any) => item.text && !item.thought)
+          .map((item: any) => item.text)
+          .join('') || '';
+        if (!texto) {
+          falhas.push(`Gemini ${modelo}: resposta vazia`);
+          marcarCooldown(modelo, 180);
+          continue;
+        }
+        return { texto, provedor: 'Gemini', modelo, uso: payload.usageMetadata || {}, duracaoMs: Date.now() - inicio };
+      } catch (e) {
+        const mensagem = e instanceof Error ? e.message : 'erro de comunicação';
+        falhas.push(`Gemini ${modelo}: ${mensagem}`);
+        marcarCooldown(modelo, 120);
+      }
+    }
+  } else {
+    falhas.push('GEMINI_API_KEY não configurada.');
+  }
+
+  if (anthropicKey && Date.now() + 1_000 < deadline) {
+    const modelo = modeloAnthropic();
+    const timeout = Math.max(1_000, Math.min(TEMPO_ETAPA_ANTHROPIC_MS, deadline - Date.now()));
     try {
-      const r = await fetch(`${GEMINI_URL}${encodeURIComponent(modelo)}:generateContent`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+      const response = await fetch(ANTHROPIC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 12000, responseMimeType: 'application/json' }
-        }), cache: 'no-store', signal: AbortSignal.timeout(45000)
+          model: modelo,
+          max_tokens: 12000,
+          system: 'Responda somente com JSON válido, em português do Brasil. Não invente fatos.',
+          messages: [{ role: 'user', content: prompt }]
+        }),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(timeout)
       });
-      const raw = await r.text(); let j: any = {}; try { j = raw ? JSON.parse(raw) : {}; } catch {}
-      if (!r.ok) { falhas.push(`Gemini ${modelo}: ${j?.error?.message || r.status}`); continue; }
-      const texto = j?.candidates?.[0]?.content?.parts?.filter((x:any)=>x.text && !x.thought).map((x:any)=>x.text).join('') || '';
-      if (!texto) { falhas.push(`Gemini ${modelo}: resposta vazia`); continue; }
-      return { texto, provedor: 'Gemini', modelo, uso: j.usageMetadata || {}, duracaoMs: Date.now()-inicio };
-    } catch(e) { falhas.push(`Gemini ${modelo}: ${e instanceof Error ? e.message : 'erro'}`); }
+      const raw = await response.text();
+      let payload: any = {};
+      try { payload = raw ? JSON.parse(raw) : {}; } catch { throw new Error('resposta inválida'); }
+      if (!response.ok) throw new Error(payload?.error?.message || `HTTP ${response.status}`);
+      const texto = (payload?.content || []).filter((item: any) => item.type === 'text').map((item: any) => item.text).join('');
+      if (!texto) throw new Error('resposta vazia');
+      return { texto, provedor: 'Anthropic', modelo, uso: payload.usage || {}, duracaoMs: Date.now() - inicio };
+    } catch (e) {
+      falhas.push(`Anthropic: ${e instanceof Error ? e.message : 'erro'}`);
+    }
+  } else if (!anthropicKey) {
+    falhas.push('ANTHROPIC_API_KEY não configurada; fallback Anthropic desativado.');
   }
-  if (anthropicKey) {
-    const modelo = process.env.AI_MODEL_ANTHROPIC?.trim() || 'claude-haiku-5-5';
-    try {
-      const r = await fetch(ANTHROPIC_URL, { method:'POST', headers:{'Content-Type':'application/json','x-api-key':anthropicKey,'anthropic-version':'2023-06-01'},
-        body: JSON.stringify({ model:modelo, max_tokens:12000, system:'Responda somente com JSON válido, em português do Brasil. Não invente fatos.', messages:[{role:'user',content:prompt}] }), cache:'no-store', signal:AbortSignal.timeout(45000) });
-      const raw=await r.text(); let j:any={}; try { j=raw?JSON.parse(raw):{}; } catch {}
-      if (!r.ok) throw new Error(j?.error?.message || `HTTP ${r.status}`);
-      const texto=(j?.content||[]).filter((x:any)=>x.type==='text').map((x:any)=>x.text).join('');
-      if (!texto) throw new Error('Resposta vazia');
-      return { texto, provedor:'Anthropic', modelo, uso:j.usage||{}, duracaoMs:Date.now()-inicio };
-    } catch(e) { falhas.push(`Anthropic: ${e instanceof Error?e.message:'erro'}`); }
-  }
+
   throw new Error(`Nenhuma IA concluiu a etapa ${etapa}. ${falhas.join(' | ') || 'Configure GEMINI_API_KEY ou ANTHROPIC_API_KEY.'}`);
 }
 
 /** Auditoria visual do arquivo original: envia PDF junto com o prompt, como o Apps Script fazia. */
 export async function consultarIAComPdf(prompt: string, pdfBase64: string, etapa: string) {
   const inicio = Date.now();
+  const deadline = inicio + TEMPO_ETAPA_TOTAL_MS;
   const geminiKey = process.env.GEMINI_API_KEY;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const falhas: string[] = [];
+  const limiteGemini = Math.min(
+    deadline - (anthropicKey ? TEMPO_ETAPA_ANTHROPIC_MS : 0),
+    inicio + TEMPO_ETAPA_GEMINI_MS
+  );
+
   if (geminiKey) {
-    for (const modelo of listaGemini()) {
+    const modelos = listaGemini().filter((modelo) => restante(modelo) === 0);
+    if (!modelos.length) falhas.push('Todos os modelos Gemini estão em cooldown.');
+
+    for (const modelo of modelos) {
+      const tempoRestante = limiteGemini - Date.now();
+      if (tempoRestante < 1_000) break;
+      const timeout = Math.min(TEMPO_ETAPA_POR_MODELO_MS, tempoRestante);
       try {
-        const r = await fetch(`${GEMINI_URL}${encodeURIComponent(modelo)}:generateContent`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+        const response = await fetch(`${GEMINI_URL}${encodeURIComponent(modelo)}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: 'Você é especialista em recrutamento e ATS no Brasil. Responda somente JSON válido. Não invente informações.' }] },
             contents: [{ role: 'user', parts: [{ inline_data: { mime_type: 'application/pdf', data: pdfBase64 } }, { text: prompt }] }],
             generationConfig: { maxOutputTokens: 16000, responseMimeType: 'application/json' }
-          }), cache: 'no-store', signal: AbortSignal.timeout(45000)
+          }),
+          cache: 'no-store',
+          signal: AbortSignal.timeout(timeout)
         });
-        const raw = await r.text(); let j: any = {}; try { j = raw ? JSON.parse(raw) : {}; } catch {}
-        if (!r.ok) { falhas.push(`Gemini ${modelo}: ${j?.error?.message || r.status}`); continue; }
-        const texto = j?.candidates?.[0]?.content?.parts?.filter((x: any) => x.text && !x.thought).map((x: any) => x.text).join('') || '';
-        if (!texto) { falhas.push(`Gemini ${modelo}: resposta vazia`); continue; }
-        return { texto, provedor: 'Gemini', modelo, uso: j.usageMetadata || {}, duracaoMs: Date.now() - inicio };
-      } catch (e) { falhas.push(`Gemini ${modelo}: ${e instanceof Error ? e.message : 'erro'}`); }
+        const raw = await response.text();
+        let payload: any = {};
+        try { payload = raw ? JSON.parse(raw) : {}; } catch { /* tratado como resposta inválida */ }
+        if (!response.ok) {
+          const detalhe = payload?.error?.message || `HTTP ${response.status}`;
+          falhas.push(`Gemini ${modelo}: ${detalhe}`);
+          if ([400, 401, 403].includes(response.status)) break;
+          const cooldown = response.status === 404 ? 21_600 : response.status === 429 ? 3_600 : 180;
+          marcarCooldown(modelo, cooldown);
+          continue;
+        }
+        const texto = payload?.candidates?.[0]?.content?.parts
+          ?.filter((item: any) => item.text && !item.thought)
+          .map((item: any) => item.text)
+          .join('') || '';
+        if (!texto) {
+          falhas.push(`Gemini ${modelo}: resposta vazia`);
+          marcarCooldown(modelo, 180);
+          continue;
+        }
+        return { texto, provedor: 'Gemini', modelo, uso: payload.usageMetadata || {}, duracaoMs: Date.now() - inicio };
+      } catch (e) {
+        const mensagem = e instanceof Error ? e.message : 'erro de comunicação';
+        falhas.push(`Gemini ${modelo}: ${mensagem}`);
+        marcarCooldown(modelo, 120);
+      }
     }
-  } else falhas.push('GEMINI_API_KEY não configurada.');
-  if (anthropicKey) {
-    const modelo = process.env.AI_MODEL_ANTHROPIC?.trim() || 'claude-haiku-5-5';
+  } else {
+    falhas.push('GEMINI_API_KEY não configurada.');
+  }
+
+  if (anthropicKey && Date.now() + 1_000 < deadline) {
+    const modelo = modeloAnthropic();
+    const timeout = Math.max(1_000, Math.min(TEMPO_ETAPA_ANTHROPIC_MS, deadline - Date.now()));
     try {
-      const r = await fetch(ANTHROPIC_URL, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: modelo, max_tokens: 16000, system: 'Você é especialista em recrutamento e ATS no Brasil. Responda somente JSON válido. Não invente informações.', messages: [{ role: 'user', content: [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } }, { type: 'text', text: prompt }] }] }),
-        cache: 'no-store', signal: AbortSignal.timeout(50000)
+      const response = await fetch(ANTHROPIC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: modelo,
+          max_tokens: 16000,
+          system: 'Você é especialista em recrutamento e ATS no Brasil. Responda somente JSON válido. Não invente informações.',
+          messages: [{ role: 'user', content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
+            { type: 'text', text: prompt }
+          ] }]
+        }),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(timeout)
       });
-      const raw = await r.text(); let j: any = {}; try { j = raw ? JSON.parse(raw) : {}; } catch {}
-      if (!r.ok) throw new Error(j?.error?.message || `HTTP ${r.status}`);
-      const texto = (j?.content || []).filter((x: any) => x.type === 'text').map((x: any) => x.text).join('');
-      if (!texto) throw new Error('Resposta vazia');
-      return { texto, provedor: 'Anthropic', modelo, uso: j.usage || {}, duracaoMs: Date.now() - inicio };
-    } catch (e) { falhas.push(`Anthropic: ${e instanceof Error ? e.message : 'erro'}`); }
-  } else falhas.push('ANTHROPIC_API_KEY não configurada.');
+      const raw = await response.text();
+      let payload: any = {};
+      try { payload = raw ? JSON.parse(raw) : {}; } catch { throw new Error('resposta inválida'); }
+      if (!response.ok) throw new Error(payload?.error?.message || `HTTP ${response.status}`);
+      const texto = (payload?.content || []).filter((item: any) => item.type === 'text').map((item: any) => item.text).join('');
+      if (!texto) throw new Error('resposta vazia');
+      return { texto, provedor: 'Anthropic', modelo, uso: payload.usage || {}, duracaoMs: Date.now() - inicio };
+    } catch (e) {
+      falhas.push(`Anthropic: ${e instanceof Error ? e.message : 'erro'}`);
+    }
+  } else if (!anthropicKey) {
+    falhas.push('ANTHROPIC_API_KEY não configurada.');
+  }
+
   throw new Error(`Nenhuma IA conseguiu auditar o PDF na etapa ${etapa}. ${falhas.join(' | ')}`);
 }
 

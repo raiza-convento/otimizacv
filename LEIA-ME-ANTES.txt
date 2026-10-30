@@ -1,0 +1,53 @@
+OTIMIZACV - LEIA-ME ANTES DE USAR
+================================
+
+1. Esta pasta contém o código-fonte Next.js + Supabase. Não é necessário copiar
+   o conteúdo para dentro de outra pasta do Next.js: abra esta pasta como projeto.
+
+2. Instale as dependências: npm ci
+
+3. Crie o arquivo .env.local a partir de .env.example e preencha as variáveis
+   no seu ambiente local. Não compartilhe nem publique .env.local.
+
+4. No Supabase, execute supabase/schema.sql no SQL Editor e confirme que o
+   bucket privado curriculos existe.
+
+5. Rode npm run dev para testar localmente. Para validar a versão de produção,
+   rode npm run build.
+
+6. Para publicar na Vercel, configure as mesmas variáveis no painel do projeto.
+   As chaves GEMINI_API_KEY, ANTHROPIC_API_KEY e SUPABASE_SERVICE_ROLE_KEY
+   devem existir somente no servidor e nunca podem usar prefixo NEXT_PUBLIC_.
+
+7. Se AI_MODEL_ANTHROPIC estiver configurada manualmente no ambiente, use
+   claude-haiku-4-5-20251001 ou remova a variável para usar o padrão do código.
+
+MELHORIAS NESTA REVISÃO
+-----------------------
+- A interface passa a mostrar o diagnóstico inicial assim que ele fica pronto.
+- O segundo revisor deixa de baixar e reenviar o PDF original: o prompt dele já pede análise da visão textual e dos problemas encontrados.
+- O segundo revisor e a geração de perguntas continuam em segundo plano,
+  enquanto o usuário já consegue ler o diagnóstico.
+- A revisão complementar pode ser retomada pela tela se falhar; se o segundo
+  revisor já terminou, a tentativa não repete essa chamada de IA.
+- A lista padrão Gemini foi atualizada para os IDs publicados na documentação
+  oficial atual, e o fallback Anthropic usa um ID de modelo ativo documentado.
+- As etapas de IA agora têm limite total de tempo e cooldown para falhas de
+  modelo, em vez de poderem aguardar vários timeouts longos em sequência.
+- package-lock.json e o rastreamento de arquivos do PDFKit foram sincronizados
+  com os arquivos de configuração mais recentes recebidos.
+
+ATENÇÃO - AINDA NÃO É SEGURO PARA PUBLICAR AO PÚBLICO
+----------------------------------------------------
+O próprio README e o código atual indicam que ainda faltam autenticação,
+autorização por proprietário e políticas RLS por usuário. As rotas administrativas
+usam a chave service role. Não publique para usuários reais antes de implementar
+e testar esses controles. Também falta automatizar a retenção/exclusão dos dados
+e executar testes integrados com currículos anonimizados.
+
+VALIDAÇÃO
+---------
+O código TS/TSX passou por verificação sintática. A instalação completa das
+dependências foi tentada neste ambiente, mas não terminou por indisponibilidade
+de acesso ao registry npm; por isso o build Next.js de produção não foi validado
+aqui. Execute npm ci e npm run build no seu computador antes de publicar.

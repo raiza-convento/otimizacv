@@ -3,7 +3,7 @@
 ## O que esta versão entrega
 
 - Upload de PDF e DOCX com limite de 10 MB, aceite LGPD e armazenamento privado.
-- Extração com Gemini e fallback Anthropic (`AI_MODEL_ANTHROPIC`, padrão `claude-haiku-5-5`).
+- Extração com Gemini e fallback Anthropic (`AI_MODEL_ANTHROPIC`, padrão `claude-haiku-4-5-20251001`).
 - Auditoria do PDF original com anexo visual para Gemini/Anthropic nas etapas de diagnóstico e segundo revisor.
 - Checagens determinísticas do `Checagens.gs`.
 - Regras de conteúdo portadas de `Conteudo.gs`: experiências sem métricas, siglas sem expansão e cursos com 10 anos ou mais.
@@ -15,6 +15,9 @@
 - Editor estruturado do perfil mestre (dados pessoais, resumo, experiências, bullets, competências, formação, cursos e idiomas), sem exigir edição manual de JSON.
 - Geração de PDF e DOCX nos dois estilos com parâmetros visuais portados de `MODELOS_CV` e da montagem de `Gerador.gs`; fontes PDF usam Helvetica como substituta métrica por não haver fontes Arial/Roboto embutidas no projeto.
 - Log de uso de IA e persistência no Supabase.
+- Diagnóstico inicial exibido antes do segundo revisor e da preparação de perguntas, que continuam em segundo plano na interface.
+- O segundo revisor usa a visão textual e o diagnóstico já produzido, sem baixar e reenviar o PDF; o anexo visual fica restrito à auditoria inicial, conforme o próprio prompt do revisor.
+- Tentativas de IA com orçamento total de tempo limitado por etapa, evitando esperar em sequência por todos os modelos.
 
 ## O que ainda NÃO é paridade 100%
 
@@ -49,7 +52,7 @@ GEMINI_API_KEY=
 GEMINI_MODEL=
 GEMINI_MODELS=
 ANTHROPIC_API_KEY=
-AI_MODEL_ANTHROPIC=claude-haiku-5-5
+AI_MODEL_ANTHROPIC=claude-haiku-4-5-20251001
 ```
 
 ## Segurança
