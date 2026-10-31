@@ -25,6 +25,7 @@ OTIMIZACV - LEIA-ME ANTES DE USAR
 MELHORIAS NESTA REVISÃO
 -----------------------
 - Correção de tipagem no ProfileEditor.tsx: os seletores data-alvo agora usam querySelector<HTMLElement>, eliminando o erro TS2339 em offsetWidth.
+- Correção de tipagem na tela de conferência: as duas referências à lista de pendências agora usam pendenciasPerfil, uma lista normalizada e segura quando perfil ainda é null, eliminando o erro TS18047 reportado no build.
 - Interface reorganizada para recuperar a hierarquia visual do Apps Script: navegação única, abas do diagnóstico, destaques clicáveis, painel de progresso das perguntas, folha de revisão e checklist de prontidão. A folha de estilos original foi mantida e complementada com ajustes de responsividade e integração.
 - Tela de conferência ganhou selo de status, indicadores de progresso, auditoria detalhada e quadro de pendências com os dados realmente disponíveis.
 - Download ganhou prévias em escala e modal ampliado dos modelos Clássico e Moderno.
