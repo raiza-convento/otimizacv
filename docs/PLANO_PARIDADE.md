@@ -13,7 +13,7 @@ A migração só será considerada concluída quando todos os itens abaixo estiv
 | Auditoria do perfil | Aplica correções automáticas de título, resumo, competências e bullets; ainda falta cobrir todas as referências e cenários do original |
 | Gerador.gs | PDF/DOCX com parâmetros dos dois modelos originais, hierarquia de seções, promoções, margens e espaçamentos portados; falta comparação visual e releitura do PDF gerado para validar paginação/linhas grudadas |
 | Interface original | Recuperados navegação única de etapas, alternância entre leitura do robô e PDF original, marcações clicáveis, painel lateral de progresso, editor em folha única, dicas nos campos, checklist de prontidão, cartões de conferência e prévias ampliáveis dos dois modelos; falta a leitura dos PDFs finais e o comparativo antes/depois |
-| Supabase | Persistência básica, bucket privado, custos e versões; falta autenticação, RLS por proprietário e política de retenção |
+| Supabase | Persistência, bucket privado, custos, versões, Supabase Auth, vínculo `auth_user_id`, políticas RLS por proprietário e validação explícita de propriedade nas APIs; falta automatizar retenção e testar isolamento entre contas |
 
 ## Interface original a reproduzir
 
@@ -34,3 +34,14 @@ O `Index.html`, `App.html` e `Estilos.html` definem telas de envio, diagnóstico
 ## Critério de aceite
 
 Cada etapa precisa de testes com currículos anonimizados e casos-limite. A paridade visual deve ser comparada lado a lado com o Apps Script em desktop e mobile. Não anunciar como 100% migrado antes de passar esses testes.
+
+
+## Incremento do portal comercial e autenticação
+
+- Criados cadastro/login por e-mail e senha, recuperação e redefinição de senha via Supabase Auth.
+- Criada central pós-login com navegação horizontal para Otimiza CV, Análise LinkedIn e Comparativo Vaga x CV.
+- Criadas páginas de apresentação dos três produtos. Os links de checkout são configuráveis por variável de ambiente; sem link real o botão de compra permanece desabilitado.
+- A ferramenta original de análise de currículo foi movida para `/produtos/otimiza-cv/usar` e protegida por sessão.
+- As rotas de análise, etapas e geração exigem access token válido e confirmam que o candidato associado à análise pertence ao usuário.
+- `supabase/schema.sql` adiciona `candidatos.auth_user_id` e políticas RLS. Dados anteriores sem proprietário não são automaticamente associados.
+- Ainda são necessários teste de isolamento com duas contas reais, configuração do Supabase Auth/SMTP, build de produção e integração do gateway escolhido.

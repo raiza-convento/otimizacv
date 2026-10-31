@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { consultarIA, consultarIAComPdf, parseJsonIA } from '@/lib/ai';
 import { supabaseAdmin } from '@/lib/supabase';
+import { authenticatedUser, ownedAnalysis } from '@/lib/auth-server';
 import { rodarChecagens } from '@/lib/checagens';
 import { promptAuditoria, promptRevisor, promptPerguntas, promptPerfil, curriculoNumerado_ } from '@/lib/prompts';
 import { checarConteudo, perguntasMetricas, perguntasDistribuicao, perguntasPromocao, expandirSiglasPerfil } from '@/lib/conteudo';
@@ -40,8 +41,10 @@ function normalizarProblemas(lista:any[],prefixo:string, dados:any, texto:string
 
 export async function POST(req:NextRequest){
  try{
+  const user = await authenticatedUser(req);
+  if (!user) return NextResponse.json({ erro: 'Sua sessão expirou. Entre novamente.' }, { status: 401 });
   const body=await req.json();const id=String(body.id_analise||'');const etapa=String(body.etapa||'');if(!id)return NextResponse.json({erro:'id_analise obrigatório.'},{status:400});
-  const sb=supabaseAdmin();const {data:a,error}=await sb.from('analises').select('*').eq('id',id).single();if(error||!a)return NextResponse.json({erro:'Análise não encontrada.'},{status:404});
+  const sb=supabaseAdmin();const a=await ownedAnalysis(sb,id,user.id);if(!a)return NextResponse.json({erro:'Análise não encontrada.'},{status:404});
   const d=a.dados_extraidos||{};const texto=a.texto_robo||'';let result:any={};let aiMeta:any=null;
   if(etapa==='checagens'){
    result=rodarChecagens(texto);await sb.from('analises').update({checagens:result,etapa_atual:'checado',atualizado_em:new Date().toISOString()}).eq('id',id);

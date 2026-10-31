@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extrairCurriculo, consultarIA, parseJsonIA } from '@/lib/ai';
 import { supabaseAdmin } from '@/lib/supabase';
+import { authenticatedUser } from '@/lib/auth-server';
 import { randomUUID } from 'crypto';
 import mammoth from 'mammoth';
 import pdf from 'pdf-parse';
@@ -12,8 +13,10 @@ const LIMITE_BYTES = 10 * 1024 * 1024;
 export async function POST(request: NextRequest) {
  const inicio=Date.now(); let analiseId:string|undefined;
  try {
+  const user = await authenticatedUser(request);
+  if (!user) return NextResponse.json({ erro: 'Entre na sua conta para analisar um currículo.' }, { status: 401 });
   const form=await request.formData(); const arquivo=form.get('arquivo');
-  const nome=String(form.get('nome')||'').trim(); const email=String(form.get('email')||'').trim().toLowerCase(); const aceite=form.get('aceiteLgpd')==='true';
+  const nome=String(form.get('nome')||user.user_metadata?.full_name||'').trim(); const email=String(user.email||form.get('email')||'').trim().toLowerCase(); const aceite=form.get('aceiteLgpd')==='true';
   if(!(arquivo instanceof File))return NextResponse.json({erro:'Selecione um currículo em PDF ou DOCX.'},{status:400});
   if(!nome)return NextResponse.json({erro:'Informe seu nome.'},{status:400});
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return NextResponse.json({erro:'Informe um e-mail válido.'},{status:400});
@@ -32,7 +35,7 @@ export async function POST(request: NextRequest) {
   }
   if(!dados||typeof dados!=='object')throw new Error('A IA não retornou dados estruturados do currículo.');
   const sb=supabaseAdmin();
-  const {data:cand,error:ec}=await sb.from('candidatos').insert({nome,email,aceite_lgpd:true,data_aceite:new Date().toISOString()}).select('id').single();if(ec)throw ec;
+  const {data:cand,error:ec}=await sb.from('candidatos').insert({auth_user_id:user.id,nome,email,aceite_lgpd:true,data_aceite:new Date().toISOString()}).select('id').single();if(ec)throw ec;
   const candidateId=cand.id as string; const path=`${candidateId}/${randomUUID()}-${arquivo.name.replace(/[^\p{L}\p{N}._-]/gu,'_')}`;
   const {error:up}=await sb.storage.from('curriculos').upload(path,bytes,{contentType:arquivo.type|| (ext==='pdf'?'application/pdf':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),upsert:false});if(up)throw new Error(`Falha ao armazenar arquivo: ${up.message}. Crie o bucket privado "curriculos" no Supabase.`);
   const {data:ana,error:ea}=await sb.from('analises').insert({candidato_id:candidateId,etapa_atual:'extracao',nome_arquivo:arquivo.name,caminho_arquivo:path,mime_type:arquivo.type,texto_robo:dados.texto_robo||textoRobo,dados_extraidos:dados,versao_prompt:'v1'}).select('id').single();if(ea)throw ea;analiseId=ana.id;

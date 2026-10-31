@@ -1,26 +1,30 @@
 OTIMIZACV - LEIA-ME ANTES DE USAR
 ================================
 
-1. Esta pasta contém o código-fonte Next.js + Supabase. Não é necessário copiar
-   o conteúdo para dentro de outra pasta do Next.js: abra esta pasta como projeto.
+1. Esta pasta contém o código-fonte Next.js + Supabase. Abra esta pasta como projeto.
 
 2. Instale as dependências: npm ci
 
-3. Crie o arquivo .env.local a partir de .env.example e preencha as variáveis
-   no seu ambiente local. Não compartilhe nem publique .env.local.
+3. Crie `.env.local` a partir de `.env.example` e preencha, no mínimo:
+   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY e
+   SUPABASE_SERVICE_ROLE_KEY. Mantenha service role e chaves de IA só no servidor.
 
-4. No Supabase, execute supabase/schema.sql no SQL Editor e confirme que o
-   bucket privado curriculos existe.
+4. No Supabase, habilite Authentication > Sign In / Providers > Email e desative
+   Confirm email. O fluxo atual não envia e-mails e não exige domínio ou SMTP.
 
-5. Rode npm run dev para testar localmente. Para validar a versão de produção,
-   rode npm run build.
+5. Execute `supabase/schema.sql` no SQL Editor e confirme que o bucket privado
+   `curriculos` existe. O schema adiciona auth_user_id e políticas RLS por usuário.
 
-6. Para publicar na Vercel, configure as mesmas variáveis no painel do projeto.
-   As chaves GEMINI_API_KEY, ANTHROPIC_API_KEY e SUPABASE_SERVICE_ROLE_KEY
-   devem existir somente no servidor e nunca podem usar prefixo NEXT_PUBLIC_.
+6. Rode `npm run dev` para testar e `npm run build` para validar a versão de produção.
 
-7. Se AI_MODEL_ANTHROPIC estiver configurada manualmente no ambiente, use
+7. Para habilitar pagamentos externos, configure URLs HTTPS reais nas variáveis
+   NEXT_PUBLIC_CHECKOUT_*. Esta versão ainda não tem webhook nem controle de compras;
+   não libere venda automática até integrar a confirmação do pagamento e o acesso.
+
+8. Se AI_MODEL_ANTHROPIC estiver configurada manualmente no ambiente, use
    claude-haiku-4-5-20251001 ou remova a variável para usar o padrão do código.
+
+Não inclua nem compartilhe `.env.local` no ZIP ou no Git.
 
 MELHORIAS NESTA REVISÃO
 -----------------------
@@ -46,18 +50,19 @@ MELHORIAS NESTA REVISÃO
 - package-lock.json e o rastreamento de arquivos do PDFKit foram sincronizados
   com os arquivos de configuração mais recentes recebidos.
 
-ATENÇÃO - AINDA NÃO É SEGURO PARA PUBLICAR AO PÚBLICO
-----------------------------------------------------
-O próprio README e o código atual indicam que ainda faltam autenticação,
-autorização por proprietário e políticas RLS por usuário. As rotas administrativas
-usam a chave service role. Não publique para usuários reais antes de implementar
-e testar esses controles. Também falta automatizar a retenção/exclusão dos dados
-e executar testes integrados com currículos anonimizados.
+ATENÇÃO - CONFIGURAÇÃO E TESTES OBRIGATÓRIOS ANTES DE ABRIR AO PÚBLICO
+------------------------------------------------------------------------
+A autenticação e a verificação de propriedade das análises foram implementadas,
+mas dependem da aplicação de supabase/schema.sql atualizado e das variáveis
+NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY e SUPABASE_SERVICE_ROLE_KEY.
+Teste o isolamento com duas contas diferentes antes de liberar usuários reais.
+A retenção/exclusão automática de dados ainda não está implementada e o checkout
+não processa pagamentos nesta versão. As compras dependem de URLs reais do gateway.
 
 VALIDAÇÃO
 ---------
 O trecho DOM corrigido passou por checagem estrita de tipos (TypeScript + lib.dom).
-Os 14 arquivos TS/TSX passaram pela verificação sintática.
+Os 26 arquivos TS/TSX passaram pela verificação sintática.
 O código TS/TSX passou por verificação sintática. A instalação completa das
 dependências foi tentada neste ambiente, mas não terminou por indisponibilidade
 de acesso ao registry npm; por isso o build Next.js de produção não foi validado
@@ -72,3 +77,18 @@ VALIDAÇÃO DESTA REVISÃO
 -----------------------
 - O código foi alterado e verificado quanto à sintaxe TypeScript/TSX.
 - O build completo (`npm run build`) não foi executado nesta sessão porque as dependências do projeto não estão instaladas no ambiente de trabalho. Após baixar o ZIP, execute `npm ci` e `npm run build` localmente e confira o deploy da Vercel.
+
+
+NOVA ENTREGA - LOGIN E VITRINE DE PRODUTOS
+-----------------------------------------
+- Login e cadastro por e-mail/senha via Supabase Auth, sem confirmação por e-mail.
+- Recuperação automática de senha por e-mail desativada nesta versão.
+- Central pós-login com menu horizontal dos três produtos.
+- Páginas comerciais para Otimiza CV, Análise LinkedIn e Comparativo Vaga x CV.
+- Ferramenta de currículo preservada em /produtos/otimiza-cv/usar.
+- APIs de análise, etapas e geração protegidas por token e verificação de propriedade.
+- Schema adiciona auth_user_id e políticas RLS para acesso por proprietário.
+- Checkout por URL configurável; nenhum pagamento é simulado ou cobrado nesta versão.
+- Registros antigos sem auth_user_id não são associados automaticamente a novos usuários.
+
+Para os detalhes, leia docs/CONFIGURAR-LOGIN-E-CHECKOUT.md.

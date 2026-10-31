@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { authenticatedUser, ownedAnalysis } from '@/lib/auth-server';
 import { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle, LevelFormat } from 'docx';
 import PDFDocument from 'pdfkit';
 
@@ -135,9 +136,13 @@ export async function POST(req: NextRequest) {
   let uploadedPdf = '';
   let uploadedDocx = '';
   try {
+    const user = await authenticatedUser(req);
+    if (!user) return NextResponse.json({ erro: 'Sua sessão expirou. Entre novamente.' }, { status: 401 });
     const { id_analise, modelo } = await req.json();
     if (!id_analise || !MODELOS[modelo]) return NextResponse.json({ erro: 'Informe id_analise e modelo classico ou moderno.' }, { status: 400 });
     const sb = supabaseAdmin();
+    const owned = await ownedAnalysis(sb, String(id_analise), user.id);
+    if (!owned) return NextResponse.json({ erro: 'Análise não encontrada.' }, { status: 404 });
     const { data: a, error } = await sb.from('analises').select('*,candidatos(nome)').eq('id', id_analise).single();
     if (error || !a) return NextResponse.json({ erro: 'Análise não encontrada.' }, { status: 404 });
     const perfil = a.perfil_mestre;
