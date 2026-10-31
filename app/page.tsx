@@ -247,8 +247,38 @@ export default function Home() {
     if (r) { setStatus('Respostas salvas.'); setAviso('Respostas salvas. Agora você pode montar o perfil mestre.'); }
   }
   async function montarPerfil() {
-    const r = await executar('perfil');
-    if (r) { setPerfil(r); setEtapa('revisao'); setStatus('Perfil mestre montado. Revise os campos e as pendências.'); }
+    setBusy(true); setInicioOperacao(Date.now()); setErro('');
+    let perfilMontado: AnyObj | null = null;
+    try {
+      setStatus('Montando o perfil mestre...');
+      perfilMontado = await chamarEtapa('perfil');
+      if (!perfilMontado) throw new Error('A IA não retornou o perfil mestre.');
+      setPerfil(perfilMontado);
+
+      // Na versão Apps Script, a auditoria do perfil acontece antes de abrir a revisão.
+      // Mantemos essa ordem para que as correções e os alertas já apareçam nos campos amarelos.
+      setStatus('Fazendo a revisão completa do perfil com IA...');
+      const a = await chamarEtapa('auditoria_perfil', { perfil: perfilMontado });
+      setAuditoria(a || null);
+      if (a?.perfil_atualizado) {
+        perfilMontado = a.perfil_atualizado;
+        setPerfil(perfilMontado);
+      }
+      setConferencia(null);
+      setEtapa('revisao');
+      setStatus('Perfil montado e auditado. Revise os campos e as pendências.');
+      if (a && (Number(a.aplicadas || 0) > 0 || Number(a.pendentes || 0) > 0)) {
+        setAviso(`A revisão da IA aplicou ${Number(a.aplicadas || 0)} correção(ões) e deixou ${Number(a.pendentes || 0)} ponto(s) para você conferir.`);
+      }
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não consegui montar e auditar o perfil.');
+      // Se o perfil foi salvo mas a auditoria falhou, não descartamos o trabalho do candidato.
+      if (perfilMontado) {
+        setPerfil(perfilMontado);
+        setEtapa('revisao');
+        setStatus('Perfil montado. A auditoria ficou pendente e poderá ser tentada junto da conferência.');
+      }
+    } finally { setBusy(false); setInicioOperacao(null); }
   }
   async function salvarPerfil() {
     if (!perfil) return;
@@ -257,8 +287,41 @@ export default function Home() {
   }
   async function auditar() {
     if (!perfil) return;
-    const r = await executar('auditoria_perfil', { perfil });
-    if (r) { setAuditoria(r); if (r.perfil_atualizado) setPerfil(r.perfil_atualizado); setConferencia(null); setEtapa('conferencia'); }
+    if (/\[(CONFIRMAR|PREENCHER)(?:[:\]])/i.test(JSON.stringify(perfil))) {
+      setErro('Ainda há [CONFIRMAR] ou [PREENCHER] no currículo. Corrija ou apague esses trechos antes de conferir.');
+      return;
+    }
+    setBusy(true); setInicioOperacao(Date.now()); setErro('');
+    let perfilAtual: AnyObj = perfil;
+    try {
+      // Um único clique executa o fluxo completo: salvar, completar eventual auditoria
+      // pendente e rodar a conferência final. Não interrompe para pedir um segundo clique.
+      setStatus('Salvando a revisão...');
+      const salvo = await chamarEtapa('salvar_perfil', { perfil: perfilAtual });
+      if (salvo) perfilAtual = salvo;
+      setPerfil(perfilAtual);
+
+      // Normalmente a auditoria já foi feita ao montar o perfil, como no Apps Script.
+      // Se aquela etapa falhou, tentamos novamente aqui, sem obrigar o usuário a recomeçar.
+      if (!auditoria) {
+        setStatus('Concluindo a auditoria do perfil com IA...');
+        const a = await chamarEtapa('auditoria_perfil', { perfil: perfilAtual });
+        setAuditoria(a || null);
+        if (a?.perfil_atualizado) {
+          perfilAtual = a.perfil_atualizado;
+          setPerfil(perfilAtual);
+        }
+      }
+
+      setStatus('Conferindo o currículo com IA...');
+      const r = await chamarEtapa('conferencia', { perfil: perfilAtual });
+      setConferencia(r || null);
+      setEtapa('conferencia');
+      setStatus('Conferência de conteúdo concluída.');
+      setAviso('Conferência de conteúdo concluída.');
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não consegui concluir a conferência do currículo.');
+    } finally { setBusy(false); setInicioOperacao(null); }
   }
   async function conferir() {
     if (!perfil) return;
@@ -342,10 +405,10 @@ export default function Home() {
               ? { titulo: 'Salvando suas respostas', passos: ['Registrando suas decisões', 'Atualizando os pontos do diagnóstico'], ativo: 0 }
               : sStatus.includes('salvando a revisão')
                 ? { titulo: 'Salvando a revisão', passos: ['Salvando os campos editados', 'Atualizando a versão do perfil'], ativo: 0 }
-                : sStatus.includes('conferindo o perfil')
-                  ? { titulo: 'Conferindo o seu currículo', passos: ['Verificando o perfil estruturado', 'Aplicando correções automáticas suportadas', 'Registrando pendências para sua revisão'], ativo: 1 }
-                  : sStatus.includes('conferência final')
-                    ? { titulo: 'Conferindo o conteúdo', passos: ['Validando contato, datas e conteúdo', 'Verificando pendências e alertas'], ativo: 0 }
+                : sStatus.includes('conferindo o perfil') || sStatus.includes('revisão completa do perfil') || sStatus.includes('auditoria do perfil')
+                  ? { titulo: 'Revisando o seu currículo', passos: ['Conferindo o perfil estruturado', 'Aplicando correções automáticas suportadas', 'Registrando os pontos que dependem de você'], ativo: 1 }
+                  : sStatus.includes('conferência final') || sStatus.includes('conferindo o currículo')
+                    ? { titulo: 'Conferindo o conteúdo', passos: ['Salvando a versão revisada', 'Verificando fatos e informações com IA', 'Preparando o resultado da conferência'], ativo: 1 }
                     : { titulo: 'Preparando os arquivos', passos: ['Montando o PDF e o Word', 'Salvando os arquivos e preparando os links'], ativo: 0 };
   const mostrarTempo = sStatus.includes('enviando') || sStatus.includes('checagens') || sStatus.includes('auditoria inicial');
   const tempoFormatado = `${Math.floor(tempoDecorrido / 60)}:${String(tempoDecorrido % 60).padStart(2, '0')}`;

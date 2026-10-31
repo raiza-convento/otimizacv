@@ -74,3 +74,7 @@ AI_MODEL_ANTHROPIC=claude-haiku-4-5-20251001
 - `lib/ai.ts`: Gemini, fallback Anthropic e auditoria com PDF anexado.
 - `supabase/schema.sql`: tabelas, bucket privado e histórico de versões.
 - `docs/PLANO_PARIDADE.md`: inventário do que falta para a paridade integral.
+
+## PDFKit na Vercel
+
+A configuração do Next.js externaliza `pdfkit` via `serverExternalPackages` para manter os arquivos AFM do pacote disponíveis em tempo de execução. A rota `/api/gerar` precisa executar no runtime Node.js (não Edge).
