@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 :root {
     --fundo: #EDF0F3;
     --papel: #FFFFFF;
@@ -600,37 +599,24 @@
     *, *::before { animation: none !important; transition: none !important; }
   }
 
-/* Ajustes Next.js */
-.tela{display:block}.formulario{max-width:640px}.painel{background:var(--papel);border:1px solid var(--linha);border-radius:var(--raio);padding:1.4rem;margin:1rem 0}.grid-form{display:grid;gap:1rem}.grid-form input,.grid-form textarea,.grid-form select{font:inherit;border:1.5px solid var(--linha);border-radius:var(--raio);padding:.7rem;width:100%;background:white}.barra-etapas{display:flex;gap:.6rem;flex-wrap:wrap;margin:1.5rem 0}.barra-etapas button{border:1px solid var(--linha);background:white;padding:.5rem .8rem;border-radius:999px;color:var(--tinta-suave)}.barra-etapas button.ativo{background:var(--acao);color:white}.alerta{padding:.8rem 1rem;background:#fff4d6;border-left:4px solid #c99b00;border-radius:4px}.ok{color:var(--confirmado)}.acoes{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1rem}.duas-colunas{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.campo-longo{min-height:100px}.item-lista{padding:.8rem;border-bottom:1px solid var(--linha)}.item-lista:last-child{border:0}.json-view{white-space:pre-wrap;overflow:auto;background:#f5f6f8;padding:1rem;border-radius:4px;font:12px var(--mono)}@media(max-width:760px){.envio,.diag-grade,.revisao-grade,.duas-colunas{grid-template-columns:1fr}.etapas{gap:.5rem;flex-wrap:wrap}.painel-robo{position:relative;top:auto;max-height:70vh}}
-/* Geração e download dos modelos */
-.grade-modelos { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-top:1.5rem; }
-.grade-modelos .painel { display:grid; align-content:start; gap:.8rem; }
-.grade-modelos .painel p { margin:0; color:var(--tinta-suave); }
-.links-arquivos { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.25rem; }
-.links-arquivos a { display:inline-flex; align-items:center; text-decoration:none; }
-@media (max-width:720px) { .grade-modelos { grid-template-columns:1fr; } }
+/* Ajustes de integração Next.js sem alterar a composição original. */
+.painel{background:var(--papel);border:1px solid var(--linha);border-radius:var(--raio);padding:1.4rem;margin:1rem 0}
+.acoes{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1rem}
+.links-arquivos{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.25rem}
+.links-arquivos a{display:inline-flex;align-items:center;text-decoration:none}
+.profile-workspace{padding-bottom:5.5rem}
+.profile-actions{position:fixed}
+@media(max-width:760px){.profile-actions{justify-content:stretch}.profile-actions .btn{flex:1}}
 
-/* Editor estruturado do perfil mestre: campos editáveis sem expor JSON ao candidato. */
-.profile-workspace { padding-bottom: 5.5rem; }
-.profile-editor { display: grid; gap: 1rem; max-width: 1000px; }
-.profile-section { background: var(--papel); border: 1px solid var(--linha); border-radius: var(--raio); padding: 1.25rem 1.35rem; display: grid; gap: 1rem; }
-.profile-section-head, .profile-item-head, .profile-bullets-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
-.profile-section-head h3 { margin-top:.12rem; }
-.eyebrow { display:block; font:500 .72rem var(--mono); letter-spacing:.08em; color:var(--tinta-suave); }
-.profile-hint, .empty-note { color:var(--tinta-suave); font-size:.86rem; }
-.profile-grid { display:grid; gap:.85rem; }
-.profile-grid.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
-.profile-field { display:grid; gap:.3rem; font-size:.9rem; font-weight:700; }
-.profile-field input, .profile-field textarea, .profile-bullet textarea { width:100%; border:1.5px solid var(--linha); border-radius:var(--raio); background:#fff; color:var(--tinta); padding:.65rem .75rem; font:400 .96rem var(--texto); resize:vertical; }
-.profile-field input:focus, .profile-field textarea:focus, .profile-bullet textarea:focus { outline:none; border-color:var(--acao); box-shadow:0 0 0 2px rgba(36,64,201,.1); }
-.profile-item { border:1px solid #e3e7ed; border-radius:var(--raio); padding:1rem; display:grid; gap:.85rem; background:#fcfdff; }
-.profile-item-head strong, .profile-bullets-head strong { font-family:var(--titulo); }
-.profile-bullet { display:grid; grid-template-columns:minmax(0,1fr) 2rem; gap:.5rem; align-items:start; }
-.icon-remove { border:1px solid var(--linha); background:#fff; border-radius:4px; font-size:1.2rem; cursor:pointer; color:var(--cor-critico); height:2.3rem; }
-.btn-pequeno { padding:.4rem .75rem; font-size:.85rem; }
-.danger-link { color:var(--cor-critico)!important; }
-.pending-section { background:#fffaf0; border-color:#f0dca8; }
-.pending-section ul { margin:0; padding-left:1.2rem; display:grid; gap:.7rem; }
-.pending-section li small { display:block; color:var(--tinta-suave); margin-top:.15rem; }
-.profile-actions { position:fixed; }
-@media(max-width:760px) { .profile-grid.two { grid-template-columns:1fr; } .profile-section { padding:1rem; } .profile-section-head { align-items:flex-start; } .profile-actions { justify-content:stretch; } .profile-actions .btn { flex:1; } }
+
+/* Prévia em escala: mantém proporção A4 e permite ampliar sem deformar o modelo. */
+.previa-conteudo{position:absolute;top:0;left:0;width:794px;height:1123px;transform-origin:top left}
+.previa .cv{top:0;left:0}
+.mini-campo>span:empty{display:none}
+.modelo .status-modelo{display:block;margin-top:.15rem}
+.modelo .btn-link{width:max-content}
+.original{background:#fff;overflow:hidden}
+.problema.ativo{scroll-margin-top:6rem;box-shadow:0 0 0 2px rgba(36,64,201,.12)}
+.pontos{scrollbar-gutter:stable}
+@media(max-width:900px){.grade-contato,.grade-cargo{grid-template-columns:1fr 1fr}.linha-ed.formacao,.linha-ed.cursos,.linha-ed.idiomas{grid-template-columns:1fr 1fr}.grupo-comp{grid-template-columns:1fr}}
+@media(max-width:620px){.rodape-acao{gap:.5rem}.rodape-acao .status-fundo{flex-basis:100%}.selo-final{grid-template-columns:1fr}.selo-final .icone{width:2.6rem;height:2.6rem}}

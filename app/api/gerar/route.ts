@@ -57,11 +57,11 @@ function pdfBuffer(p: Obj, modelo: string): Promise<Buffer> {
     };
     const item = (value: string) => para(`•  ${value}`, { size: est.corpo, indent: 7, after: 3, lineGap: 1.3 });
 
-    para(nomeBonito(p.nome) || 'Nome do candidato', { font: bold, size: est.nomeTam, align: modelo === 'classico' ? 'center' : 'left', after: 6 });
-    if (txt(p.titulo)) para(txt(p.titulo), { font: bold, size: est.corpo + 1.5, color: est.corSecao, align: modelo === 'classico' ? 'center' : 'left', after: 6 });
+    para(nomeBonito(p.nome) || 'Nome do candidato', { font: bold, size: est.nomeTam, align: 'left', after: 6 });
+    if (txt(p.titulo)) para(txt(p.titulo), { font: bold, size: est.corpo + 1.5, color: est.corSecao, align: 'left', after: 6 });
     const c = p.contato || {};
     const contato = [c.cidade, c.telefone, c.email, c.linkedin].map(txt).filter(Boolean).join(' | ');
-    if (contato) para(contato, { color: est.suave, size: 9, align: modelo === 'classico' ? 'center' : 'left', after: 10 });
+    if (contato) para(contato, { color: est.suave, size: 9, align: 'left', after: 10 });
 
     if (txt(p.resumo)) { section('Resumo Profissional'); para(txt(p.resumo), { lineGap: 2, after: 4 }); }
     if ((p.competencias || []).length) {
@@ -98,7 +98,7 @@ function pdfBuffer(p: Obj, modelo: string): Promise<Buffer> {
 function docxBuffer(p: Obj, modelo: string): Promise<Buffer> {
   const est = MODELOS[modelo];
   const children: Paragraph[] = [];
-  const align = modelo === 'classico' ? AlignmentType.CENTER : AlignmentType.LEFT;
+  const align = AlignmentType.LEFT;
   const addPara = (text: string, options: Obj = {}) => children.push(new Paragraph({ children: [new TextRun({ text, font: est.fonte, size: Math.round((options.size || est.corpo) * 2), bold: !!options.bold, color: String(options.color || est.tinta).replace('#','') })], alignment: options.align || AlignmentType.LEFT, spacing: { before: Math.round((options.before || 0) * 20), after: Math.round((options.after ?? 3) * 20), line: 276 } }));
   const section = (label: string) => {
     const title = est.maiusculas ? label.toUpperCase() : label;

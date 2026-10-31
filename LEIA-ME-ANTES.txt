@@ -24,6 +24,13 @@ OTIMIZACV - LEIA-ME ANTES DE USAR
 
 MELHORIAS NESTA REVISÃO
 -----------------------
+- Interface reorganizada para recuperar a hierarquia visual do Apps Script: navegação única, abas do diagnóstico, destaques clicáveis, painel de progresso das perguntas, folha de revisão e checklist de prontidão. A folha de estilos original foi mantida e complementada com ajustes de responsividade e integração.
+- Tela de conferência ganhou selo de status, indicadores de progresso, auditoria detalhada e quadro de pendências com os dados realmente disponíveis.
+- Download ganhou prévias em escala e modal ampliado dos modelos Clássico e Moderno.
+- Fontes originais Atkinson Hyperlegible, Bricolage Grotesque, IBM Plex Mono e Roboto voltaram a ser carregadas no Next.js.
+- Navegação entre etapas volta ao topo da tela; carregamento mostra sequência de passos e tempo decorrido na análise inicial.
+- Cabeçalho dos modelos PDF/DOCX alinhado à esquerda, como no gerador original.
+- A leitura comparativa do PDF final não foi simulada: ainda exige implementar o processamento dos PDFs gerados.
 - A interface passa a mostrar o diagnóstico inicial assim que ele fica pronto.
 - O segundo revisor deixa de baixar e reenviar o PDF original: o prompt dele já pede análise da visão textual e dos problemas encontrados.
 - O segundo revisor e a geração de perguntas continuam em segundo plano,

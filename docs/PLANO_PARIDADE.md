@@ -12,15 +12,21 @@ A migração só será considerada concluída quando todos os itens abaixo estiv
 | Perfil.gs | Consolidação com cargo/empresa/datas preservados, distribuição, contato, promoção, pendências e trava numérica; falta paridade completa da tela e de todas as auxiliares |
 | Auditoria do perfil | Aplica correções automáticas de título, resumo, competências e bullets; ainda falta cobrir todas as referências e cenários do original |
 | Gerador.gs | PDF/DOCX com parâmetros dos dois modelos originais, hierarquia de seções, promoções, margens e espaçamentos portados; falta comparação visual e releitura do PDF gerado para validar paginação/linhas grudadas |
-| Interface original | Identidade visual e CSS-base copiados; editor de perfil agora usa campos estruturados em vez de JSON; ainda faltam visualização alternável do PDF, marcações clicáveis, painel de prontidão e comparativo antes/depois |
+| Interface original | Recuperados navegação única de etapas, alternância entre leitura do robô e PDF original, marcações clicáveis, painel lateral de progresso, editor em folha única, dicas nos campos, checklist de prontidão, cartões de conferência e prévias ampliáveis dos dois modelos; falta a leitura dos PDFs finais e o comparativo antes/depois |
 | Supabase | Persistência básica, bucket privado, custos e versões; falta autenticação, RLS por proprietário e política de retenção |
 
 ## Interface original a reproduzir
 
-O `Index.html`, `App.html` e `Estilos.html` definem telas de envio, diagnóstico com texto do robô e marcações, perguntas/revisão, perfil mestre editável, conferência comparativa e download. A identidade usa fundo `#EDF0F3`, papel branco, tinta `#172033`, azul `#2440C9`, cantos de 6px e fontes Bricolage Grotesque, Atkinson Hyperlegible e IBM Plex Mono. A tela atual ainda não é uma cópia visual fiel.
+O `Index.html`, `App.html` e `Estilos.html` definem telas de envio, diagnóstico com texto do robô e marcações, perguntas/revisão, perfil mestre editável, conferência comparativa e download. A identidade usa fundo `#EDF0F3`, papel branco, tinta `#172033`, azul `#2440C9`, cantos de 6px e fontes Bricolage Grotesque, Atkinson Hyperlegible e IBM Plex Mono. A folha de estilos original foi preservada integralmente e complementada apenas com ajustes de integração/responsividade. A estrutura React recupera os componentes centrais e os estados visuais, mas ainda não é uma cópia visual e funcional 100% fiel: faltam principalmente a leitura dos PDFs finais e o comparativo antes/depois.
 
 ## Incremento desta versão
 
+- Interface React reorganizada para seguir a hierarquia visual do `Index.html`: diagnóstico em duas colunas, painel de progresso das perguntas, folha única de revisão, selo final, cartões de indicadores e prévias dos modelos com janela ampliada.
+- Fontes originais carregadas também na aplicação Next.js: Atkinson Hyperlegible, Bricolage Grotesque, IBM Plex Mono e Roboto.
+- A folha de estilos `Estilos.html` foi preservada integralmente em `app/globals.css`; as únicas regras adicionais tratam da integração Next.js, escala das prévias e pequenos ajustes responsivos.
+- Marcações e ocorrências do diagnóstico agora são interativas e fazem a navegação cruzada entre o texto do robô e os cartões de problemas.
+- Troca de etapa volta a tela ao topo; a janela de carregamento recupera passos animados e cronômetro na primeira leitura.
+- Conferência visual usa somente métricas presentes no Next.js; não imita a leitura comparativa dos PDFs finais, que depende de implementar a releitura dos arquivos gerados.
 - Editor de perfil estruturado com edição de dados pessoais, título, resumo, contato, experiências, bullets, competências, formação, cursos, idiomas e visualização das pendências.
 - Templates PDF/DOCX reestruturados a partir dos parâmetros `MODELOS_CV` do `Gerador.gs`: fonte nominal, tamanhos, margens, cores, caixa alta no Clássico, títulos azuis no Moderno, linha divisória no Clássico, promoções internas e espaçamentos por bloco.
 - PDFKit utiliza Helvetica como substituta de métricas próximas para Arial/Roboto; portanto, ainda não é reprodução tipográfica exata.
