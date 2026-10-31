@@ -24,6 +24,7 @@ OTIMIZACV - LEIA-ME ANTES DE USAR
 
 MELHORIAS NESTA REVISÃO
 -----------------------
+- Correção de tipagem no ProfileEditor.tsx: os seletores data-alvo agora usam querySelector<HTMLElement>, eliminando o erro TS2339 em offsetWidth.
 - Interface reorganizada para recuperar a hierarquia visual do Apps Script: navegação única, abas do diagnóstico, destaques clicáveis, painel de progresso das perguntas, folha de revisão e checklist de prontidão. A folha de estilos original foi mantida e complementada com ajustes de responsividade e integração.
 - Tela de conferência ganhou selo de status, indicadores de progresso, auditoria detalhada e quadro de pendências com os dados realmente disponíveis.
 - Download ganhou prévias em escala e modal ampliado dos modelos Clássico e Moderno.
@@ -54,6 +55,8 @@ e executar testes integrados com currículos anonimizados.
 
 VALIDAÇÃO
 ---------
+O trecho DOM corrigido passou por checagem estrita de tipos (TypeScript + lib.dom).
+Os 14 arquivos TS/TSX passaram pela verificação sintática.
 O código TS/TSX passou por verificação sintática. A instalação completa das
 dependências foi tentada neste ambiente, mas não terminou por indisponibilidade
 de acesso ao registry npm; por isso o build Next.js de produção não foi validado

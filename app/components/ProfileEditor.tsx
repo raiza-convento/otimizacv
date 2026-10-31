@@ -54,7 +54,7 @@ export default function ProfileEditor({ profile, onChange, disabled = false }: P
   const inlineNotes = (target: string) => getPendencias(target).map((p) => <div className="nota-ajuste" key={p.index}><span className="icone-pend" aria-hidden="true">!</span><div><p><strong>Ajuste aqui:</strong> {p.texto}</p>{p.ideal && <p className="ideal-inline"><strong>O ideal:</strong> {p.ideal}</p>}<button type="button" className="btn-link" disabled={disabled} onClick={() => removePending(p.index)}>Já resolvi</button></div></div>);
   const scrollToTarget = (target: string) => {
     if (!target) return;
-    const el = document.querySelector(`[data-alvo="${target}"]`) || document.querySelector(`[data-alvo="${target.replace(/-b\d+$/, '')}"]`);
+    const el = document.querySelector<HTMLElement>(`[data-alvo="${target}"]`) || document.querySelector<HTMLElement>(`[data-alvo="${target.replace(/-b\d+$/, '')}"]`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (el) { el.classList.remove('piscar'); void el.offsetWidth; el.classList.add('piscar'); window.setTimeout(() => el.classList.remove('piscar'), 2500); }
     const field = el?.querySelector('input, textarea') as HTMLElement | null;
